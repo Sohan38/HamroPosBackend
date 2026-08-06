@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto';
 import { AdminUserRepository } from '../repositories/adminUser.repository';
 import { hashActivationKey, verifyActivationKey } from '../crypto/hashing';
 
+const normalizeRole = (role: string) => role?.toLowerCase() === 'superadmin' ? 'superadmin' : 'admin';
+
 export class AdminUserService {
     private repo = new AdminUserRepository();
 
@@ -16,13 +18,13 @@ export class AdminUserService {
     async createAdmin(email: string, password: string, role = 'admin') {
         const id = randomUUID();
         const passwordHash = await hashActivationKey(password);
-        return this.repo.create({ id, email, passwordHash, role });
+        return this.repo.create({ id, email, passwordHash, role: normalizeRole(role) });
     }
 
     async updateAdmin(id: string, data: { email?: string; role?: string; disabled?: boolean }) {
         const update: { email?: string; role?: string; isActive?: boolean } = {};
         if (data.email) update.email = data.email;
-        if (data.role) update.role = data.role;
+        if (data.role) update.role = normalizeRole(data.role);
         if (typeof data.disabled === 'boolean') update.isActive = !data.disabled;
         return this.repo.update(id, update);
     }

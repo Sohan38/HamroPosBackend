@@ -29,13 +29,14 @@ export const jwtAuth = (requiredRole?: string | string[]) => (req: Request, res:
     const token = header.replace('Bearer ', '').trim();
     try {
         const payload = auth.verifyToken<any>(token);
+        const normalizedRole = typeof payload.role === 'string' ? payload.role.toLowerCase() : undefined;
         const roles = normalizeRoles(requiredRole);
-        if (roles && !hasRequiredRole(payload.role, roles)) {
+        if (roles && !hasRequiredRole(normalizedRole, roles)) {
             return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Insufficient role' }]));
         }
 
         // attach user info
-        req.user = payload as { sub: string; role: string };
+        req.user = { ...payload, role: normalizedRole } as { sub: string; role: string };
         next();
     } catch (err) {
         // If the error is due to missing JWT secret, return 503 config error

@@ -121,7 +121,7 @@ export class AdminController {
                 return res.status(400).json(createResponse(null, [{ code: 'ALREADY_EXISTS', message: 'Admin user already exists' }]));
             }
 
-            const user = await adminUserService.createAdmin(email, password, 'SuperAdmin');
+            const user = await adminUserService.createAdmin(email, password, 'superadmin');
             await adminAuditService.logAdminAction({
                 adminId: user.id,
                 targetAdminId: user.id,
@@ -143,7 +143,7 @@ export class AdminController {
             const requester = req.user!;
             const current = await adminUserService.findById(requester.sub);
             if (!current || !current.isActive) return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
-            if (current.role !== 'SuperAdmin') return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
+            if (current.role !== 'superadmin') return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
 
             const { email, password, role } = req.body as { email: string; password: string; role?: string };
             if (!email || !password) return res.status(400).json(createResponse(null, [{ code: 'VALIDATION_ERROR', message: 'email and password required' }]));
@@ -169,7 +169,7 @@ export class AdminController {
             const requester = req.user!;
             const current = await adminUserService.findById(requester.sub);
             if (!current || !current.isActive) return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
-            if (current.role !== 'SuperAdmin') return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
+            if (current.role !== 'superadmin') return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
 
             const id = req.params.id;
             const { email, role, disabled } = req.body as { email?: string; role?: string; disabled?: boolean };
@@ -194,7 +194,7 @@ export class AdminController {
             const requester = req.user!;
             const current = await adminUserService.findById(requester.sub);
             if (!current || !current.isActive) return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
-            if (current.role !== 'SuperAdmin') return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
+            if (current.role !== 'superadmin') return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
 
             const id = req.params.id;
             await adminUserService.disableAdmin(id);
@@ -218,7 +218,7 @@ export class AdminController {
             const requester = req.user!;
             const current = await adminUserService.findById(requester.sub);
             if (!current || !current.isActive) return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
-            if (current.role !== 'SuperAdmin') return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
+            if (current.role !== 'superadmin') return res.status(403).json(createResponse(null, [{ code: 'FORBIDDEN', message: 'Forbidden' }]));
 
             const id = req.params.id;
             const { password } = req.body as { password: string };
