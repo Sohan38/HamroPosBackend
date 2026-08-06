@@ -1,0 +1,975 @@
+openapi: 3.0.3
+info:
+  title: Sohan Manager Backend API
+  version: 1.0.0
+  description: >-
+    OpenAPI contract for the Sohan Manager backend. Includes admin management,
+    plans, organizations, subscriptions, licenses, device activations, and
+    admin audit endpoints. Designed for a Next.js + TypeScript frontend to
+    generate a type-safe client.
+
+servers:
+  - url: https://api.example.com/{basePath}
+    description: Production server (replace with your host)
+    variables:
+      basePath:
+        default: api/v1
+        description: API versioned base path
+
+tags:
+  - name: auth
+    description: Authentication and bootstrap
+  - name: admin
+    description: Admin user management
+  - name: audit
+    description: Admin audit log queries
+  - name: plans
+    description: Plan definitions and entitlements
+  - name: organizations
+    description: Organization management
+  - name: subscriptions
+    description: Subscription management
+  - name: licenses
+    description: License and activation endpoints
+  - name: devices
+    description: Device management and logs
+
+security:
+  - bearerAuth: []
+
+paths:
+  /admin/setup:
+    post:
+      tags: [auth]
+      summary: Bootstrap initial SuperAdmin (one-time only)
+      description: Creates the initial SuperAdmin user if none exist. This
+        endpoint must be disabled in production after provisioning.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreate'
+      responses:
+        '201':
+          description: SuperAdmin created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Admin already exists
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admin/token:
+    post:
+      tags: [auth]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLogin'
+      responses:
+        '200':
+          description: Returns JWT and admin info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Rate-limited
+
+  /admin:
+    get:
+      tags: [admin]
+      summary: List admins (paginated)
+      security:
+        - bearerAuth: [role:superadmin, role:admin]
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: Paginated list of admins
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAdmins'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [admin]
+      summary: Create a new admin (SuperAdmin only)
+      security:
+        - bearerAuth: [role:superadmin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreate'
+      responses:
+        '201':
+          description: Admin created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/{adminId}:
+    parameters:
+      - name: adminId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Admin user UUID
+    get:
+      tags: [admin]
+      summary: Get admin by id
+      security:
+        - bearerAuth: [role:superadmin, role:admin]
+      responses:
+        '200':
+          description: Admin record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [admin]
+      summary: Update admin (SuperAdmin only for role changes)
+      security:
+        - bearerAuth: [role:superadmin, role:admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdate'
+      responses:
+        '200':
+          description: Updated admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    delete:
+      tags: [admin]
+      summary: Disable (soft-delete) admin
+      security:
+        - bearerAuth: [role:superadmin]
+      responses:
+        '204':
+          description: Admin disabled
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin-audit:
+    get:
+      tags: [audit]
+      summary: Query admin audit logs
+      security:
+        - bearerAuth: [role:superadmin]
+      parameters:
+        - name: adminId
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAdminAudits'
+
+  /plans:
+    get:
+      tags: [plans]
+      summary: List plans
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated plans
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlans'
+
+    post:
+      tags: [plans]
+      summary: Create plan
+      security:
+        - bearerAuth: [role:superadmin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanCreate'
+      responses:
+        '201':
+          description: Plan created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+
+  /plans/{planId}:
+    parameters:
+      - name: planId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [plans]
+      summary: Get plan by id
+      responses:
+        '200':
+          description: Plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [plans]
+      summary: Update plan
+      security:
+        - bearerAuth: [role:superadmin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanUpdate'
+      responses:
+        '200':
+          description: Updated plan
+
+  /organizations:
+    get:
+      tags: [organizations]
+      summary: List organizations
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated organizations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrganizations'
+
+    post:
+      tags: [organizations]
+      summary: Create organization
+      security:
+        - bearerAuth: [role:admin, role:superadmin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreate'
+      responses:
+        '201':
+          description: Organization created
+
+  /subscriptions:
+    get:
+      tags: [subscriptions]
+      summary: List subscriptions
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSubscriptions'
+
+    post:
+      tags: [subscriptions]
+      summary: Create subscription
+      security:
+        - bearerAuth: [role:admin, role:superadmin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionCreate'
+      responses:
+        '201':
+          description: Subscription created
+
+  /licenses:
+    get:
+      tags: [licenses]
+      summary: List licenses
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated licenses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLicenses'
+
+    post:
+      tags: [licenses]
+      summary: Create license
+      security:
+        - bearerAuth: [role:admin, role:superadmin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LicenseCreate'
+      responses:
+        '201':
+          description: License created
+
+  /license/activate:
+    post:
+      tags: [licenses]
+      summary: Activate a license for a device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivationRequest'
+      responses:
+        '200':
+          description: Activation successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivationResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /license/verify:
+    post:
+      tags: [licenses]
+      summary: Verify a license payload (offline)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signedPayload:
+                  type: string
+      responses:
+        '200':
+          description: Valid license payload
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /admin/devices/{deviceId}/reset:
+    post:
+      tags: [devices]
+      summary: Reset a device (admin only)
+      security:
+        - bearerAuth: [role:admin, role:superadmin]
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device reset
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    /license/public-keys:
+      get:
+        tags: [licenses]
+        summary: Get active Ed25519 public keys for payload verification
+        description: Returns an array of active public keys to allow clients to verify signed license payloads. Keys are rotated by operators; the server may publish multiple keys while keeping a single active private signing key.
+        responses:
+          '200':
+            description: Active public keys
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    keys:
+                      type: array
+                      items:
+                        type: string
+
+  /webhooks/billing:
+        post:
+          tags: [subscriptions]
+          summary: Billing provider webhook endpoint
+          description: Receives billing provider webhook events (invoice.paid, invoice.payment_failed). Secured by `x-billing-signature` header matching server config.
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+          responses:
+            '200':
+              description: Webhook received
+            '401':
+              $ref: '#/components/responses/Unauthorized'
+
+  /invoice/{id}:
+        get:
+          tags: [subscriptions]
+          summary: Get invoice by provider invoice id or internal id
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Invoice
+            '404':
+              $ref: '#/components/responses/NotFound'
+
+  /invoice/subscription/{subscriptionId}:
+        get:
+          tags: [subscriptions]
+          summary: List invoices for a subscription
+          parameters:
+            - name: subscriptionId
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: List of invoices
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        JWT bearer token. Include `role` claim to represent user's role
+        (`superadmin`, `admin`). Role-based authorization is enforced server-side.
+
+  parameters:
+    page:
+      name: page
+      in: query
+      description: Page number (1-based)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    perPage:
+      name: perPage
+      in: query
+      description: Items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+    sort:
+      name: sort
+      in: query
+      schema:
+        type: string
+      description: Sort expression, e.g. `createdAt:desc`
+    search:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: Free-text search across common fields
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+
+    AdminBase:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [superadmin, admin]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AdminCreate:
+      type: object
+      required: [email, password, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [superadmin, admin]
+
+    AdminLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AdminUpdate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [superadmin, admin]
+        isActive:
+          type: boolean
+
+    AdminResponse:
+      allOf:
+        - $ref: '#/components/schemas/AdminBase'
+
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expiresIn:
+          type: integer
+        admin:
+          $ref: '#/components/schemas/AdminBase'
+
+    PaginatedAdmins:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminResponse'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    Plan:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        maxDevices:
+          type: integer
+        price:
+          type: number
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PlanCreate:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        maxDevices:
+          type: integer
+        price:
+          type: number
+        description:
+          type: string
+
+    PlanUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        maxDevices:
+          type: integer
+        price:
+          type: number
+        description:
+          type: string
+
+    PaginatedPlans:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Plan'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    OrganizationCreate:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    PaginatedOrganizations:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organization'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        planId:
+          type: string
+        status:
+          type: string
+        billingCycle:
+          type: string
+        isLifetime:
+          type: boolean
+        startsAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    SubscriptionCreate:
+      type: object
+      required: [id, organizationId, planId, startsAt]
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        planId:
+          type: string
+        status:
+          type: string
+        billingCycle:
+          type: string
+        isLifetime:
+          type: boolean
+        startsAt:
+          type: string
+          format: date-time
+
+    PaginatedSubscriptions:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    License:
+      type: object
+      properties:
+        id:
+          type: string
+        subscriptionId:
+          type: string
+        activationKeyLookup:
+          type: string
+        status:
+          type: string
+        maxDevicesOverride:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    LicenseCreate:
+      type: object
+      required: [id, subscriptionId, activationKeyVerify]
+      properties:
+        id:
+          type: string
+        subscriptionId:
+          type: string
+        activationKeyVerify:
+          type: string
+        maxDevicesOverride:
+          type: integer
+
+    PaginatedLicenses:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/License'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    ActivationRequest:
+      type: object
+      required: [activationKey, device]
+      properties:
+        activationKey:
+          type: string
+        device:
+          type: object
+          properties:
+            id:
+              type: string
+            platform:
+              type: string
+            manufacturer:
+              type: string
+            model:
+              type: string
+            appVersion:
+              type: string
+
+    ActivationResponse:
+      type: object
+      properties:
+        licenseId:
+          type: string
+        deviceId:
+          type: string
+        payload:
+          type: object
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+        licenseId:
+          type: string
+        platform:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        appVersion:
+          type: string
+        lastSeenAt:
+          type: string
+          format: date-time
+
+    AdminAudit:
+      type: object
+      properties:
+        id:
+          type: integer
+        adminId:
+          type: string
+        targetAdminId:
+          type: string
+        action:
+          type: string
+        details:
+          type: string
+        isSuccess:
+          type: boolean
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedAdminAudits:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAudit'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    Feature:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        valueType:
+          type: string
+        description:
+          type: string
+
+    PlanEntitlement:
+      type: object
+      properties:
+        planId:
+          type: string
+        featureId:
+          type: string
+        booleanValue:
+          type: boolean
+        numericValue:
+          type: integer
+
+    LicenseEntitlementOverride:
+      type: object
+      properties:
+        licenseId:
+          type: string
+        featureId:
+          type: string
+        booleanValue:
+          type: boolean
+        numericValue:
+          type: integer
+
+x-info:
+  generatedBy: assistant
+  note: Keep this file in sync with controller routes under `src/controllers`. Use tooling (OpenAPI generator, or custom script) to regenerate when routes change.
