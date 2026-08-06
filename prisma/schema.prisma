@@ -19,6 +19,8 @@ model Plan {
   id           String            @id @db.VarChar(50)
   name         String            @db.VarChar(100)
   maxDevices   Int               @default(1)
+  price        Float?
+  description  String?
   createdAt    DateTime          @default(now()) @db.Timestamp(6)
   entitlements PlanEntitlement[]
   subscriptions Subscription[]
