@@ -29,7 +29,6 @@ export class ActivationService {
         if (!license) {
             await this.auditService.logEvent({
                 licenseId: null,
-                deviceId,
                 ipAddress,
                 userAgent,
                 action: 'activate',
@@ -42,7 +41,6 @@ export class ActivationService {
         if (license.status !== 'active') {
             await this.auditService.logEvent({
                 licenseId: license.id,
-                deviceId,
                 ipAddress,
                 userAgent,
                 action: 'activate',
@@ -88,7 +86,6 @@ export class ActivationService {
         if (!license) {
             await this.auditService.logEvent({
                 licenseId: null,
-                deviceId: params.deviceId,
                 ipAddress: params.ipAddress,
                 userAgent: params.userAgent,
                 action: 'activate',
@@ -102,7 +99,6 @@ export class ActivationService {
         if (!validKey) {
             await this.auditService.logEvent({
                 licenseId: license.id,
-                deviceId: params.deviceId,
                 ipAddress: params.ipAddress,
                 userAgent: params.userAgent,
                 action: 'activate',
@@ -121,7 +117,6 @@ export class ActivationService {
         if (!existingDevice && activeDeviceCount >= maxDevices) {
             await this.auditService.logEvent({
                 licenseId: license.id,
-                deviceId: params.deviceId,
                 ipAddress: params.ipAddress,
                 userAgent: params.userAgent,
                 action: 'activate',
@@ -179,7 +174,6 @@ export class ActivationService {
         if (!this.cryptoService.isSigningEnabled()) {
             await this.auditService.logEvent({
                 licenseId: license.id,
-                deviceId: params.deviceId,
                 ipAddress: params.ipAddress,
                 userAgent: params.userAgent,
                 action: 'activate',
