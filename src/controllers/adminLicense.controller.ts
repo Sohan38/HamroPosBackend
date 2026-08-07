@@ -28,11 +28,14 @@ export class LicenseAdminController {
 
     async create(req: Request, res: Response, next: NextFunction) {
         try {
-            const { id, subscriptionId, status, maxDevicesOverride, overrides } = req.body;
+            const { id, subscriptionId, organizationName, planName, status, expiresAt, maxDevicesOverride, overrides } = req.body;
             const result = await licenseAdminService.createLicense({
                 id,
                 subscriptionId,
+                organizationName,
+                planName,
                 status,
+                expiresAt: expiresAt ? new Date(expiresAt) : undefined,
                 maxDevicesOverride,
                 overrides,
             });
