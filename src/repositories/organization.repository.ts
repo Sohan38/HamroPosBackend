@@ -9,6 +9,10 @@ export class OrganizationRepository {
         return prisma.organization.findUnique({ where: { id } });
     }
 
+    async findByName(name: string) {
+        return prisma.organization.findFirst({ where: { name } });
+    }
+
     async create(data: { id: string; name: string; address?: string | null }) {
         return prisma.organization.create({ data });
     }

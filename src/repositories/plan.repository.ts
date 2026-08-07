@@ -9,6 +9,10 @@ export class PlanRepository {
         return prisma.plan.findUnique({ where: { id } });
     }
 
+    async findByName(name: string) {
+        return prisma.plan.findFirst({ where: { name } });
+    }
+
     async create(data: { id: string; name: string; maxDevices?: number | null; price?: number | null; description?: string | null }) {
         const payload: any = { id: data.id, name: data.name };
         if (data.maxDevices !== undefined && data.maxDevices !== null) payload.maxDevices = data.maxDevices;

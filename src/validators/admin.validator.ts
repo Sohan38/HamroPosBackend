@@ -56,8 +56,11 @@ export const licenseEntitlementsSchema = z.object({
 export const createLicenseSchema = z.object({
     body: z.object({
         id: z.string().optional(),
-        subscriptionId: z.string().min(1),
+        subscriptionId: z.string().optional(),
+        organizationName: z.string().min(1).optional(),
+        planName: z.string().min(1).optional(),
         status: z.enum(['active', 'trial', 'expired', 'suspended']).optional(),
+        expiresAt: z.string().optional(),
         maxDevicesOverride: z.number().int().min(1).optional(),
         overrides: z.array(
             z.object({
@@ -67,6 +70,9 @@ export const createLicenseSchema = z.object({
                 numericValue: z.number().optional(),
             }),
         ).optional(),
+    }).refine((value) => Boolean(value.subscriptionId) || (value.organizationName && value.planName), {
+        message: 'subscriptionId or organizationName and planName are required',
+        path: ['subscriptionId'],
     }),
 });
 
