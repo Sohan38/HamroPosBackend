@@ -11,7 +11,7 @@ const deviceRepository = new DeviceRepository();
 const licenseAdminService = new LicenseAdminService();
 const entitlementService = new EntitlementService();
 
-function mapLicenseListItem(item: any, deviceCount: number) {
+function mapLicenseListItem(item: any, deviceCount: number, activeFeatureCount: number) {
     return {
         id: item.id,
         activationKeyLookup: item.activationKeyLookup,
@@ -20,6 +20,7 @@ function mapLicenseListItem(item: any, deviceCount: number) {
         planName: item.subscription?.plan?.name ?? "",
         deviceCount,
         maxDevices: item.maxDevicesOverride ?? item.subscription?.plan?.maxDevices ?? 1,
+        featureCount: activeFeatureCount,
         createdAt: item.createdAt.toISOString(),
         expiresAt: item.subscription?.expiresAt?.toISOString() ?? "",
     };
@@ -49,7 +50,9 @@ export class LicenseAdminController {
             const payload = await Promise.all(
                 items.map(async (item) => {
                     const deviceCount = await deviceRepository.countByLicenseId(item.id);
-                    return mapLicenseListItem(item, deviceCount);
+                    const entitlementMap = await entitlementService.compileLicenseEntitlements(item.subscription.planId, item.id);
+                    const activeFeatureCount = Object.entries(entitlementMap).filter(([_key, value]) => value === true).length;
+                    return mapLicenseListItem(item, deviceCount, activeFeatureCount);
                 }),
             );
             return res.status(200).json(createResponse(payload));
@@ -102,7 +105,11 @@ export class LicenseAdminController {
 
     async update(req: Request, res: Response, next: NextFunction) {
         try {
-            const item = await repo.update(req.params.id, req.body);
+            const { overrides, ...licenseData } = req.body;
+            const item = await repo.update(req.params.id, licenseData);
+            if (Array.isArray(overrides)) {
+                await entitlementService.saveLicenseOverrides(req.params.id, overrides);
+            }
             return res.status(200).json(createResponse(item));
         } catch (err) {
             next(err);
