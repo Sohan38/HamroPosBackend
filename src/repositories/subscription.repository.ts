@@ -12,12 +12,12 @@ export class SubscriptionRepository {
         return prisma.subscription.findMany({ include: { organization: true, plan: true } });
     }
 
-    async create(data: { id: string; organizationId: string; planId: string; status?: string; isLifetime?: boolean; expiresAt?: Date | null; gracePeriodDays?: number | null }) {
+    async create(data: { id: string; organizationId: string; planId: string; startsAt?: Date | null; status?: string; isLifetime?: boolean; expiresAt?: Date | null; gracePeriodDays?: number | null }) {
         const payload: any = {
             id: data.id,
             organizationId: data.organizationId,
             planId: data.planId,
-            startsAt: data.expiresAt ? new Date() : new Date(),
+            startsAt: data.startsAt ?? new Date(),
             status: data.status ?? 'active',
             isLifetime: data.isLifetime ?? false,
         };
