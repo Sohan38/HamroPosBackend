@@ -14,6 +14,7 @@ import {
     planEntitlementsSchema,
     licenseIdParamSchema,
     licenseEntitlementsSchema,
+    createLicenseSchema,
     createTokenSchema,
     setupAdminSchema,
     adminCreateSchema,
@@ -65,7 +66,7 @@ router.delete('/plans/:id', planController.remove.bind(planController));
 
 // License admin CRUD
 router.get('/licenses', licenseAdminController.list.bind(licenseAdminController));
-router.post('/licenses', requireJson, licenseAdminController.create.bind(licenseAdminController));
+router.post('/licenses', requireJson, validateRequest(createLicenseSchema), licenseAdminController.create.bind(licenseAdminController));
 router.get('/licenses/:id', licenseAdminController.get.bind(licenseAdminController));
 router.put('/licenses/:id', requireJson, licenseAdminController.update.bind(licenseAdminController));
 router.delete('/licenses/:id', licenseAdminController.remove.bind(licenseAdminController));

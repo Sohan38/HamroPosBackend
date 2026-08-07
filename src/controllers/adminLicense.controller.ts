@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { createResponse } from '../utils/apiResponse';
 import { LicenseRepository } from '../repositories/license.repository';
+import { LicenseAdminService } from '../services/licenseAdmin.service';
 
 const repo = new LicenseRepository();
+const licenseAdminService = new LicenseAdminService();
 
 export class LicenseAdminController {
     async list(req: Request, res: Response, next: NextFunction) {
@@ -26,8 +28,15 @@ export class LicenseAdminController {
 
     async create(req: Request, res: Response, next: NextFunction) {
         try {
-            const item = await repo.create(req.body);
-            return res.status(201).json(createResponse(item));
+            const { id, subscriptionId, status, maxDevicesOverride, overrides } = req.body;
+            const result = await licenseAdminService.createLicense({
+                id,
+                subscriptionId,
+                status,
+                maxDevicesOverride,
+                overrides,
+            });
+            return res.status(201).json(createResponse(result));
         } catch (err) {
             next(err);
         }

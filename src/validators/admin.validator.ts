@@ -53,6 +53,23 @@ export const licenseEntitlementsSchema = z.object({
     }),
 });
 
+export const createLicenseSchema = z.object({
+    body: z.object({
+        id: z.string().optional(),
+        subscriptionId: z.string().min(1),
+        status: z.enum(['active', 'trial', 'expired', 'suspended']).optional(),
+        maxDevicesOverride: z.number().int().min(1).optional(),
+        overrides: z.array(
+            z.object({
+                featureId: z.string().min(1),
+                valueType: z.enum(['boolean', 'numeric']),
+                booleanValue: z.boolean().optional(),
+                numericValue: z.number().optional(),
+            }),
+        ).optional(),
+    }),
+});
+
 export const createTokenSchema = z.object({
     body: z.object({
         email: z.string().email().optional(),

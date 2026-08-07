@@ -11,3 +11,8 @@ export const createActivationKeyLookupHash = (activationKey: string): string => 
         .digest('hex');
     return hash;
 };
+
+export const generateActivationKey = (): string => {
+    const raw = crypto.randomBytes(10).toString('hex').toUpperCase();
+    return raw.match(/.{1,4}/g)?.join('-') ?? raw;
+};
