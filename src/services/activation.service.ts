@@ -99,25 +99,33 @@ export class ActivationService {
         const lookupHash = this.cryptoService.createLookupHash(params.activationKey);
         const normalizedKey = this.normalizeActivationKey(params.activationKey);
         const formattedKey = this.cryptoService.formatActivationKey(normalizedKey);
+        const receivedKeyTrimmed = params.activationKey.trim();
+        const receivedKeyLower = receivedKeyTrimmed.toLowerCase();
         const looksLikeLookupHash = this.looksLikeActivationKeyLookupHash(params.activationKey);
         const looksLikeFormattedKey = this.looksLikeFormattedActivationKey(params.activationKey);
 
         logger.info('License activation attempt for key', maskActivationKey(params.activationKey), 'device', params.deviceId);
         const license = await this.licenseRepository.findByActivationKeyLookup(lookupHash);
+        const directStoredLookupMatch = await prisma.license.findUnique({
+            where: { activationKeyLookup: receivedKeyLower },
+        });
 
         if (!license) {
             logger.warn('License activation failed: invalid activation key lookup', {
-                receivedKey: params.activationKey,
-                normalizedKey: normalizedKey,
+                receivedKey: receivedKeyTrimmed,
+                normalizedKey,
                 expectedKeyFormat: formattedKey,
                 lookupHash,
                 looksLikeLookupHash,
                 looksLikeFormattedKey,
+                receivedKeyMatchesStoredLookup: Boolean(directStoredLookupMatch),
+                directStoredLookupMatchLicenseId: directStoredLookupMatch?.id ?? null,
+                directStoredLookupMatchActivationKeyLookup: directStoredLookupMatch?.activationKeyLookup ?? null,
                 deviceId: params.deviceId,
                 ipAddress: params.ipAddress,
                 userAgent: params.userAgent,
                 reason: 'no license matched activationKeyLookup',
-                note: 'activation key lookup hash did not match any stored license',
+                note: 'activation key lookup hash did not match any license when hashed as activation key',
             });
             await this.auditService.logEvent({
                 licenseId: null,
