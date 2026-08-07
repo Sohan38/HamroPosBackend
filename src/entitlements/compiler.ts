@@ -1,8 +1,9 @@
 import { EntitlementMap } from '../types';
 
 export const compileEntitlements = (baseEntitlements: EntitlementMap, overrides: EntitlementMap = {}): EntitlementMap => {
-    return Object.keys(baseEntitlements).reduce<EntitlementMap>((acc, key) => {
-        acc[key] = overrides.hasOwnProperty(key) ? overrides[key] : baseEntitlements[key];
-        return acc;
-    }, {});
+    const entitlements: EntitlementMap = { ...baseEntitlements };
+    for (const key of Object.keys(overrides)) {
+        entitlements[key] = overrides[key];
+    }
+    return entitlements;
 };
