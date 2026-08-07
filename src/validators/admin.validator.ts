@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createFeatureSchema = z.object({
     body: z.object({
-        id: z.string().min(1),
+        id: z.string().optional(),
         name: z.string().min(1),
         valueType: z.enum(['boolean', 'numeric']),
         description: z.string().optional(),
