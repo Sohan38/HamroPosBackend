@@ -9,6 +9,23 @@ export const createFeatureSchema = z.object({
     }),
 });
 
+export const updateFeatureSchema = z.object({
+    params: z.object({
+        id: z.string().min(1),
+    }),
+    body: z.object({
+        name: z.string().min(1).optional(),
+        valueType: z.enum(['boolean', 'numeric']).optional(),
+        description: z.string().optional(),
+    }),
+});
+
+export const featureIdParamSchema = z.object({
+    params: z.object({
+        id: z.string().min(1),
+    }),
+});
+
 export const planIdParamSchema = z.object({
     params: z.object({
         planId: z.string().min(1),

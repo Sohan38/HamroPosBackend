@@ -37,6 +37,27 @@ export class AdminController {
         }
     }
 
+    async updateFeature(req: Request, res: Response, next: NextFunction) {
+        try {
+            const id = req.params.id;
+            const { name, valueType, description } = req.body;
+            const feature = await featureService.updateFeature(id, { name, valueType, description });
+            return res.status(200).json(createResponse(feature));
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async deleteFeature(req: Request, res: Response, next: NextFunction) {
+        try {
+            const id = req.params.id;
+            await featureService.deleteFeature(id);
+            return res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async getPlanEntitlements(req: Request, res: Response, next: NextFunction) {
         try {
             const { planId } = req.params;

@@ -10,6 +10,8 @@ import { authRateLimiter } from '../middleware/rateLimit.middleware';
 import { setupGuard } from '../middleware/setupGuard.middleware';
 import {
     createFeatureSchema,
+    updateFeatureSchema,
+    featureIdParamSchema,
     planIdParamSchema,
     planEntitlementsSchema,
     licenseIdParamSchema,
@@ -52,6 +54,8 @@ router.use(jwtAuth('admin'));
 
 router.get('/features', controller.listFeatures.bind(controller));
 router.post('/features', requireJson, validateRequest(createFeatureSchema), controller.createFeature.bind(controller));
+router.put('/features/:id', requireJson, validateRequest(updateFeatureSchema), controller.updateFeature.bind(controller));
+router.delete('/features/:id', validateRequest(featureIdParamSchema), controller.deleteFeature.bind(controller));
 router.get('/plans/:planId/entitlements', validateRequest(planIdParamSchema), controller.getPlanEntitlements.bind(controller));
 router.post('/plans/:planId/entitlements', requireJson, validateRequest(planEntitlementsSchema), controller.savePlanEntitlements.bind(controller));
 router.get('/licenses/:licenseId/entitlements/overrides', validateRequest(licenseIdParamSchema), controller.getLicenseOverrides.bind(controller));

@@ -12,4 +12,12 @@ export class FeatureService {
         const id = feature.id ?? generateId(feature.name);
         return this.repository.create({ ...feature, id });
     }
+
+    async updateFeature(id: string, data: { name?: string; valueType?: 'boolean' | 'numeric'; description?: string | null }) {
+        return this.repository.update(id, data);
+    }
+
+    async deleteFeature(id: string) {
+        return this.repository.delete(id);
+    }
 }

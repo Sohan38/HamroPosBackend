@@ -22,4 +22,16 @@ export class FeatureRepository {
             },
         });
     }
+
+    async update(id: string, data: { name?: string; valueType?: FeatureValueType; description?: string | null }) {
+        const payload: any = {};
+        if (data.name !== undefined) payload.name = data.name;
+        if (data.valueType !== undefined) payload.valueType = data.valueType;
+        if (data.description !== undefined) payload.description = data.description;
+        return prisma.feature.update({ where: { id }, data: payload });
+    }
+
+    async delete(id: string) {
+        return prisma.feature.delete({ where: { id } });
+    }
 }
