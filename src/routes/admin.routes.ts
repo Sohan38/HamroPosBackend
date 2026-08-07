@@ -73,6 +73,7 @@ router.get('/licenses', licenseAdminController.list.bind(licenseAdminController)
 router.post('/licenses', requireJson, validateRequest(createLicenseSchema), licenseAdminController.create.bind(licenseAdminController));
 router.get('/licenses/:id', licenseAdminController.get.bind(licenseAdminController));
 router.put('/licenses/:id', requireJson, licenseAdminController.update.bind(licenseAdminController));
+router.post('/licenses/:id/regenerate-activation-key', licenseAdminController.regenerateActivationKey.bind(licenseAdminController));
 router.delete('/licenses/:id', licenseAdminController.remove.bind(licenseAdminController));
 
 // Subscription CRUD + lifecycle

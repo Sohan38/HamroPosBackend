@@ -3,15 +3,17 @@ import prisma from '../prisma/client';
 import { createResponse } from '../utils/apiResponse';
 import { LicenseRepository } from '../repositories/license.repository';
 import { DeviceRepository } from '../repositories/device.repository';
+import { SubscriptionRepository } from '../repositories/subscription.repository';
 import { LicenseAdminService } from '../services/licenseAdmin.service';
 import { EntitlementService } from '../services/entitlement.service';
 
 const repo = new LicenseRepository();
 const deviceRepository = new DeviceRepository();
+const subscriptionRepository = new SubscriptionRepository();
 const licenseAdminService = new LicenseAdminService();
 const entitlementService = new EntitlementService();
 
-function mapLicenseListItem(item: any, deviceCount: number, activeFeatureCount: number) {
+function mapLicenseListItem(item: any, deviceCount: number, activeFeatureCount: number, activeFeatureIds: string[]) {
     return {
         id: item.id,
         activationKeyLookup: item.activationKeyLookup,
@@ -21,12 +23,13 @@ function mapLicenseListItem(item: any, deviceCount: number, activeFeatureCount: 
         deviceCount,
         maxDevices: item.maxDevicesOverride ?? item.subscription?.plan?.maxDevices ?? 1,
         featureCount: activeFeatureCount,
+        featureIds: activeFeatureIds,
         createdAt: item.createdAt.toISOString(),
         expiresAt: item.subscription?.expiresAt?.toISOString() ?? "",
     };
 }
 
-function mapLicenseDetail(item: any, devices: any[], activationLogs: any[], entitlements: any[]) {
+function mapLicenseDetail(item: any, devices: any[], activationLogs: any[], entitlements: any[], overrides: any[], featureIds: string[]) {
     return {
         id: item.id,
         activationKeyLookup: item.activationKeyLookup,
@@ -36,6 +39,8 @@ function mapLicenseDetail(item: any, devices: any[], activationLogs: any[], enti
         devices,
         activationLogs,
         entitlements,
+        overrides,
+        featureIds,
         deviceCount: devices.length,
         maxDevices: item.maxDevicesOverride ?? item.subscription?.plan?.maxDevices ?? 1,
         createdAt: item.createdAt.toISOString(),
@@ -51,8 +56,11 @@ export class LicenseAdminController {
                 items.map(async (item) => {
                     const deviceCount = await deviceRepository.countByLicenseId(item.id);
                     const entitlementMap = await entitlementService.compileLicenseEntitlements(item.subscription.planId, item.id);
-                    const activeFeatureCount = Object.entries(entitlementMap).filter(([_key, value]) => value === true).length;
-                    return mapLicenseListItem(item, deviceCount, activeFeatureCount);
+                    const activeFeatureIds = Object.entries(entitlementMap)
+                        .filter(([_key, value]) => value === true)
+                        .map(([key]) => key);
+                    const activeFeatureCount = activeFeatureIds.length;
+                    return mapLicenseListItem(item, deviceCount, activeFeatureCount, activeFeatureIds);
                 }),
             );
             return res.status(200).json(createResponse(payload));
@@ -67,18 +75,35 @@ export class LicenseAdminController {
             if (!item) return res.status(404).json(createResponse(null, [{ code: 'NOT_FOUND', message: 'License not found' }]));
 
             const devices = await deviceRepository.listByLicenseId(item.id);
-            const activationLogs = await prisma.activationLog.findMany({
+            const activationLogRows = await prisma.activationLog.findMany({
                 where: { licenseId: item.id },
                 orderBy: { createdAt: 'desc' },
             });
+            const activationLogs = activationLogRows.map((log) => ({
+                id: log.id.toString(),
+                licenseId: log.licenseId,
+                deviceId: log.deviceId,
+                action: log.action,
+                success: log.isSuccess,
+                failureReason: log.failureReason,
+                createdAt: log.createdAt.toISOString(),
+            }));
             const entitlementMap = await entitlementService.compileLicenseEntitlements(item.subscription.planId, item.id);
+            const overrideMap = await entitlementService.getLicenseOverrides(item.id);
             const entitlements = Object.entries(entitlementMap).map(([key, value]) => ({
                 key,
                 label: key,
                 value: String(value),
             }));
+            const licenseOverrides = Object.entries(overrideMap).map(([featureId, value]) => ({
+                featureId,
+                value: String(value),
+            }));
+            const activeFeatureIds = Object.entries(entitlementMap)
+                .filter(([_key, value]) => value === true)
+                .map(([key]) => key);
 
-            return res.status(200).json(createResponse(mapLicenseDetail(item, devices, activationLogs, entitlements)));
+            return res.status(200).json(createResponse(mapLicenseDetail(item, devices, activationLogs, entitlements, licenseOverrides, activeFeatureIds)));
         } catch (err) {
             next(err);
         }
@@ -105,12 +130,34 @@ export class LicenseAdminController {
 
     async update(req: Request, res: Response, next: NextFunction) {
         try {
-            const { overrides, ...licenseData } = req.body;
-            const item = await repo.update(req.params.id, licenseData);
+            const { overrides, organizationName: _organizationName, planName: _planName, expiresAt, ...licenseData } = req.body;
+            const item = await repo.findById(req.params.id);
+            if (!item) return res.status(404).json(createResponse(null, [{ code: 'NOT_FOUND', message: 'License not found' }]));
+
+            const updatedLicense = await repo.update(req.params.id, licenseData);
+
+            if (expiresAt !== undefined) {
+                const expiryDate = expiresAt ? new Date(expiresAt) : null;
+                await subscriptionRepository.update(item.subscriptionId, { expiresAt: expiryDate });
+            }
+
             if (Array.isArray(overrides)) {
                 await entitlementService.saveLicenseOverrides(req.params.id, overrides);
             }
-            return res.status(200).json(createResponse(item));
+
+            return res.status(200).json(createResponse(updatedLicense));
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async regenerateActivationKey(req: Request, res: Response, next: NextFunction) {
+        try {
+            const item = await repo.findById(req.params.id);
+            if (!item) return res.status(404).json(createResponse(null, [{ code: 'NOT_FOUND', message: 'License not found' }]));
+
+            const result = await licenseAdminService.regenerateActivationKey(req.params.id);
+            return res.status(200).json(createResponse(result));
         } catch (err) {
             next(err);
         }

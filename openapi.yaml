@@ -378,6 +378,26 @@ paths:
         '201':
           description: License created
 
+  /licenses/{id}/regenerate-activation-key:
+    post:
+      tags: [licenses]
+      summary: Regenerate a license activation key
+      security:
+        - bearerAuth: [role:admin, role:superadmin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Activation key regenerated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseCreateResponse'
+
   /license/activate:
     post:
       tags: [licenses]

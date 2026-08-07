@@ -91,4 +91,23 @@ export class LicenseAdminService {
         const { activationKeyVerify: _, ...safeLicense } = license;
         return { license: safeLicense, activationKey };
     }
+
+    async regenerateActivationKey(id: string) {
+        const license = await this.licenseRepository.findById(id);
+        if (!license) {
+            throw new Error('License not found');
+        }
+
+        const activationKey = generateActivationKey();
+        const activationKeyLookup = this.cryptoService.createLookupHash(activationKey);
+        const activationKeyVerify = await this.cryptoService.hashKey(activationKey);
+
+        const updatedLicense = await this.licenseRepository.update(id, {
+            activationKeyLookup,
+            activationKeyVerify,
+        });
+
+        const { activationKeyVerify: _, ...safeLicense } = updatedLicense;
+        return { license: safeLicense, activationKey };
+    }
 }
