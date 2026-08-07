@@ -27,6 +27,11 @@ export class ActivationService {
 
     private async ensureLicenseAndSubscription(license: any, deviceId: string, ipAddress: string, userAgent?: string | null) {
         if (!license) {
+            logger.warn('License activation failed: invalid activation key in ensureLicenseAndSubscription', {
+                deviceId,
+                ipAddress,
+                userAgent,
+            });
             await this.auditService.logEvent({
                 licenseId: null,
                 ipAddress,
@@ -84,6 +89,12 @@ export class ActivationService {
         const license = await this.licenseRepository.findByActivationKeyLookup(lookupHash);
 
         if (!license) {
+            logger.warn('License activation failed: invalid activation key', {
+                key: maskActivationKey(params.activationKey),
+                deviceId: params.deviceId,
+                ipAddress: params.ipAddress,
+                userAgent: params.userAgent,
+            });
             await this.auditService.logEvent({
                 licenseId: null,
                 ipAddress: params.ipAddress,
@@ -97,6 +108,14 @@ export class ActivationService {
 
         const validKey = await this.cryptoService.verifyKey(params.activationKey, license.activationKeyVerify);
         if (!validKey) {
+            logger.warn('License activation failed: invalid activation key verification', {
+                key: maskActivationKey(params.activationKey),
+                deviceId: params.deviceId,
+                licenseId: license.id,
+                licenseStatus: license.status,
+                ipAddress: params.ipAddress,
+                userAgent: params.userAgent,
+            });
             await this.auditService.logEvent({
                 licenseId: license.id,
                 ipAddress: params.ipAddress,
