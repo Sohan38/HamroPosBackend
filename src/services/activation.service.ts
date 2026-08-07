@@ -25,6 +25,10 @@ export class ActivationService {
         return license.subscription?.plan?.maxDevices ?? 1;
     }
 
+    private normalizeActivationKey(key: string): string {
+        return key.trim().toUpperCase();
+    }
+
     private async ensureLicenseAndSubscription(license: any, deviceId: string, ipAddress: string, userAgent?: string | null) {
         if (!license) {
             logger.warn('License activation failed: invalid activation key in ensureLicenseAndSubscription', {
@@ -85,15 +89,21 @@ export class ActivationService {
         userAgent?: string | null;
     }) {
         const lookupHash = this.cryptoService.createLookupHash(params.activationKey);
+        const normalizedKey = this.normalizeActivationKey(params.activationKey);
+        const formattedKey = this.cryptoService.formatActivationKey(normalizedKey);
         logger.info('License activation attempt for key', maskActivationKey(params.activationKey), 'device', params.deviceId);
         const license = await this.licenseRepository.findByActivationKeyLookup(lookupHash);
 
         if (!license) {
-            logger.warn('License activation failed: invalid activation key', {
-                key: maskActivationKey(params.activationKey),
+            logger.warn('License activation failed: invalid activation key lookup', {
+                receivedKey: maskActivationKey(params.activationKey),
+                normalizedKey: maskActivationKey(formattedKey),
+                expectedKeyFormat: formattedKey,
+                lookupHash,
                 deviceId: params.deviceId,
                 ipAddress: params.ipAddress,
                 userAgent: params.userAgent,
+                reason: 'no license matched activationKeyLookup',
             });
             await this.auditService.logEvent({
                 licenseId: null,
